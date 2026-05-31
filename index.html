@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archit Nutrition Dashboard</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #232733;
+  --accent: #6c63ff;
+  --accent2: #43e97b;
+  --text: #e8e8f0;
+  --text2: #9ca3af;
+  --border: #2d3140;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --success: #10b981;
+  --noegg: #ff6b9d;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.pin-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; }
+.pin-overlay h2 { font-size: 1.5rem; color: var(--text); }
+.pin-input { display: flex; gap: 10px; }
+.pin-input input { width: 48px; height: 56px; text-align: center; font-size: 1.5rem; background: var(--surface); border: 2px solid var(--border); border-radius: 12px; color: var(--text); outline: none; }
+.pin-input input:focus { border-color: var(--accent); }
+.pin-error { color: var(--danger); font-size: 0.85rem; min-height: 20px; }
+.container { max-width: 900px; margin: 0 auto; padding: 16px; display: none; }
+.header { text-align: center; padding: 20px 0 10px; }
+.header h1 { font-size: 1.4rem; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.header .week-label { color: var(--text2); font-size: 0.85rem; margin-top: 4px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+.stat-card { background: var(--surface); border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid var(--border); }
+.stat-card .value { font-size: 1.3rem; font-weight: 700; color: var(--accent2); }
+.stat-card .label { font-size: 0.7rem; color: var(--text2); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+.tabs { display: flex; gap: 4px; margin: 16px 0; overflow-x: auto; padding-bottom: 4px; }
+.tab-btn { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-size: 0.8rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+.tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.day-chips { display: flex; gap: 6px; margin: 12px 0; overflow-x: auto; padding-bottom: 4px; }
+.day-chip { padding: 6px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); font-size: 0.75rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; position: relative; }
+.day-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day-chip.no-egg::after { content: '🚫🥚'; font-size: 0.6rem; position: absolute; top: -6px; right: -4px; }
+.meal-card { background: var(--surface); border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid var(--border); }
+.meal-card .meal-time { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.meal-card .meal-name { font-size: 0.95rem; font-weight: 600; }
+.meal-card .meal-desc { font-size: 0.8rem; color: var(--text2); margin-top: 3px; }
+.meal-card .meal-macros { display: flex; gap: 12px; margin-top: 8px; font-size: 0.7rem; color: var(--text2); }
+.meal-card .meal-macros span { background: var(--surface2); padding: 2px 8px; border-radius: 8px; }
+.cooking-flow { background: var(--surface2); border-radius: 8px; padding: 10px 14px; margin-top: 8px; font-size: 0.75rem; color: var(--accent2); border-left: 3px solid var(--accent2); }
+.grocery-section { margin-bottom: 20px; }
+.grocery-section h3 { font-size: 0.9rem; margin-bottom: 10px; padding: 8px 12px; background: var(--surface); border-radius: 8px; border-left: 3px solid var(--accent); }
+.grocery-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+.grocery-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+.grocery-item.checked label { text-decoration: line-through; color: var(--text2); }
+.nutrient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.nutrient-card { background: var(--surface); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
+.nutrient-card .n-name { font-size: 0.75rem; color: var(--text2); }
+.nutrient-card .n-value { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+.nutrient-card .n-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.nutrient-card .n-bar-fill { height: 100%; border-radius: 2px; background: var(--accent2); }
+.supplement-card { background: var(--surface); border-radius: 10px; padding: 14px; margin-bottom: 10px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.supplement-card .s-name { font-weight: 600; font-size: 0.9rem; }
+.supplement-card .s-dose { font-size: 0.8rem; color: var(--text2); }
+.supplement-card .s-reason { font-size: 0.7rem; color: var(--accent); margin-top: 2px; }
+.prep-section { margin-bottom: 20px; }
+.prep-section h3 { font-size: 0.95rem; margin-bottom: 10px; color: var(--accent2); }
+.prep-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+.prep-item .prep-icon { font-size: 1.1rem; }
+.section-title { font-size: 1rem; font-weight: 600; margin: 16px 0 10px; }
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .nutrient-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="pin-overlay" id="pinOverlay">
+  <h2>🔒 Enter PIN</h2>
+  <div class="pin-input" id="pinInput">
+    <input type="tel" maxlength="1" data-idx="0" autocomplete="off">
+    <input type="tel" maxlength="1" data-idx="1" autocomplete="off">
+    <input type="tel" maxlength="1" data-idx="2" autocomplete="off">
+    <input type="tel" maxlength="1" data-idx="3" autocomplete="off">
+  </div>
+  <div class="pin-error" id="pinError"></div>
+</div>
+
+<div class="container" id="mainApp">
+  <div class="header">
+    <h1>Archit Nutrition Dashboard</h1>
+    <div class="week-label">Week of June 1-7</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="value">2,500</div><div class="label">Calories</div></div>
+    <div class="stat-card"><div class="value">110g</div><div class="label">Protein</div></div>
+    <div class="stat-card"><div class="value">310g</div><div class="label">Carbs</div></div>
+    <div class="stat-card"><div class="value">70g</div><div class="label">Fat</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="meals">Meals</button>
+    <button class="tab-btn" data-tab="grocery">Grocery</button>
+    <button class="tab-btn" data-tab="nutrients">Nutrients</button>
+    <button class="tab-btn" data-tab="supplements">Supplements</button>
+    <button class="tab-btn" data-tab="prep">Prep</button>
+  </div>
+
+  <!-- MEALS TAB -->
+  <div class="tab-content active" id="tab-meals">
+    <div class="day-chips" id="dayChips"></div>
+    <div id="mealCards"></div>
+  </div>
+
+  <!-- GROCERY TAB -->
+  <div class="tab-content" id="tab-grocery">
+    <div id="groceryList"></div>
+  </div>
+
+  <!-- NUTRIENTS TAB -->
+  <div class="tab-content" id="tab-nutrients">
+    <div class="section-title">Daily Micronutrient Targets</div>
+    <div class="nutrient-grid" id="nutrientGrid"></div>
+    <div class="section-title" style="margin-top:20px;">Supplement-Required (cannot meet from food alone)</div>
+    <div class="nutrient-grid" id="suppReqGrid"></div>
+  </div>
+
+  <!-- SUPPLEMENTS TAB -->
+  <div class="tab-content" id="tab-supplements">
+    <div id="supplementsList"></div>
+  </div>
+
+  <!-- PREP TAB -->
+  <div class="tab-content" id="tab-prep">
+    <div id="prepContent"></div>
+  </div>
+</div>
+
+<script>
+// === DATA ===
+var DAYS = [
+  {name: 'Mon', date: 'Jun 1', noEgg: false},
+  {name: 'Tue', date: 'Jun 2', noEgg: true},
+  {name: 'Wed', date: 'Jun 3', noEgg: false},
+  {name: 'Thu', date: 'Jun 4', noEgg: false},
+  {name: 'Fri', date: 'Jun 5', noEgg: false},
+  {name: 'Sat', date: 'Jun 6', noEgg: true},
+  {name: 'Sun', date: 'Jun 7', noEgg: false}
+];
+
+var MEALS = {
+  Mon: [
+    {time: 'Pre-gym \u2022 6:00 AM', name: 'Tea with milk', desc: '100ml whole milk + chai/coffee', macros: '65 cal \u2022 3.5g P'},
+    {time: 'Breakfast \u2022 8:00 AM', name: 'French Toast', desc: '2 Wild Rye slices dipped in egg+milk, pan-fried in butter. 2 eggs used.', macros: '430 cal \u2022 20g P'},
+    {time: 'Lunch \u2022 12:30 PM', name: 'Paneer Sandwich', desc: '2 Wild Rye slices + 100g paneer + spinach + capsicum + tomato', macros: '420 cal \u2022 25g P'},
+    {time: 'Snack \u2022 3:30 PM', name: 'Curd + Seeds + Amla', desc: '150g curd + 30g pumpkin seeds + Brazil nut + amla', macros: '313 cal \u2022 16g P'},
+    {time: 'Dinner \u2022 7:30 PM', name: 'Palak Paneer + 2 Roti', desc: 'DOUBLE batch: 120g paneer/serving. Half for tonight, half fridged for Tue lunch roll.', macros: '575 cal \u2022 32g P', flow: 'Cook \u2192 Tue lunch: Palak paneer roll'}
+  ],
+  Tue: [
+    {time: 'Pre-gym \u2022 6:00 AM', name: 'Tea with milk', desc: '100ml whole milk + chai/coffee', macros: '65 cal \u2022 3.5g P'},
+    {time: 'Breakfast \u2022 8:00 AM', name: 'Poha + Date-Almond Shake', desc: 'Poha (60g flattened rice + peanuts + potato + turmeric + lemon). Shake: 250ml milk + 2 dates + almonds + cardamom + flax + protein scoop. NO EGGS.', macros: '920 cal \u2022 51g P'},
+    {time: 'Lunch \u2022 12:30 PM', name: 'Palak Paneer Roll', desc: 'Costco tortilla + 130g leftover palak paneer + sliced onion + lemon', macros: '430 cal \u2022 20g P', flow: 'Uses Mon dinner leftover'},
+    {time: 'Snack \u2022 3:30 PM', name: 'Pumpkin Seeds + Brazil Nut + Amla', desc: '30g pumpkin seeds + 1 Brazil nut + amla for Vit C', macros: '223 cal \u2022 10g P'},
+    {time: 'Dinner \u2022 7:30 PM', name: 'Rajma + 2 Roti + Curd', desc: 'BIG batch rajma (200g dry). 180g bowl tonight + curd 150g. Fridge 1 portion for Wed lunch.', macros: '680 cal \u2022 32g P', flow: 'Cook \u2192 Wed lunch: Boiled plate with rajma'}
+  ],
+  Wed: [
+    {time: 'Pre-gym \u2022 6:00 AM', name: 'Tea with milk', desc: '100ml whole milk + chai/coffee', macros: '65 cal \u2022 3.5g P'},
+    {time: 'Breakfast \u2022 8:00 AM', name: 'Avocado Toast + 2 Boiled Eggs', desc: '2 Wild Rye slices + half avocado + lemon + chili flakes + 2 eggs on side', macros: '440 cal \u2022 17g P'},
+    {time: 'Lunch \u2022 12:30 PM', name: 'Boiled Plate', desc: 'Broccoli 100g + 2 boiled eggs + 80g paneer cubes + 100g rajma (Tue leftover) + salt, pepper, lemon', macros: '480 cal \u2022 40g P', flow: 'Uses Tue dinner leftover rajma'},
+    {time: 'Snack \u2022 3:30 PM', name: 'Pumpkin Seeds + Guava', desc: '30g pumpkin seeds + Brazil nut + half guava (50g)', macros: '237 cal \u2022 10g P'},
+    {time: 'Dinner \u2022 7:30 PM', name: 'Chole + 2 Roti + Curd', desc: 'BIGGEST batch (250g dry). Tonight + Thu lunch + FREEZE 2 portions for Sat.', macros: '690 cal \u2022 33g P', flow: 'Cook \u2192 Thu lunch: Chole quinoa bowl + Freeze \u2192 Sat lunch'}
+  ],
+  Thu: [
+    {time: 'Pre-gym \u2022 6:00 AM', name: 'Tea with milk', desc: '100ml whole milk + chai/coffee', macros: '65 cal \u2022 3.5g P'},
+    {time: 'Breakfast \u2022 8:00 AM', name: 'Oats + Protein Scoop', desc: '40g rolled oats + 200ml milk + banana + protein scoop 30g + flaxseed', macros: '590 cal \u2022 38g P'},
+    {time: 'Lunch \u2022 12:30 PM', name: 'Chole Quinoa Bowl', desc: '150g leftover chole + 150g cooked quinoa (Sunday batch) + onion + lemon + coriander', macros: '430 cal \u2022 21g P', flow: 'Uses Wed dinner leftover chole'},
+    {time: 'Snack \u2022 3:30 PM', name: 'Curd Bowl + Seeds', desc: '150g curd + 30g pumpkin seeds + flaxseed 10g + Brazil nut', macros: '348 cal \u2022 17g P'},
+    {time: 'Dinner \u2022 7:30 PM', name: 'Kadhai Paneer + 2 Roti', desc: '120g paneer + bell peppers + onion-tomato gravy + ghee on roti. Fridge leftover for Fri.', macros: '650 cal \u2022 28g P', flow: 'Cook \u2192 Fri lunch: Kadhai paneer roll'}
+  ],
+  Fri: [
+    {time: 'Pre-gym \u2022 6:00 AM', name: 'Tea with milk', desc: '100ml whole milk + chai/coffee', macros: '65 cal \u2022 3.5g P'},
+    {time: 'Breakfast \u2022 8:00 AM', name: 'Classic PB Shake + 2 Boiled Eggs', desc: '250ml milk + banana + 30g oats + PB + flax + honey. 2 boiled eggs on side.', macros: '640 cal \u2022 34g P'},
+    {time: 'Lunch \u2022 12:30 PM', name: 'Kadhai Paneer Roll', desc: 'Costco tortilla + 130g leftover kadhai paneer + onion + capsicum + lemon', macros: '470 cal \u2022 24g P', flow: 'Uses Thu dinner leftover'},
+    {time: 'Snack \u2022 3:30 PM', name: 'Curd + Seeds + Amla', desc: '150g curd + 30g pumpkin seeds + Brazil nut + amla', macros: '313 cal \u2022 16g P'},
+    {time: 'Dinner \u2022 7:30 PM', name: 'Lobiya + Dal + 2 Roti', desc: 'Lobiya 180g + masoor dal 150g (2 burners). Dal leftover for Sat+Sun dinners.', macros: '670 cal \u2022 31g P', flow: 'Cook \u2192 Sat dinner: uses frozen chole for lunch + leftover dal'}
+  ],
+  Sat: [
+    {time: 'Pre-gym \u2022 6:00 AM', name: 'Tea with milk', desc: '100ml whole milk + chai/coffee', macros: '65 cal \u2022 3.5g P'},
+    {time: 'Breakfast \u2022 8:00 AM', name: 'Savory Daliya', desc: '60g broken wheat + mixed veggies + ghee + cumin tadka. 200ml milk on side. NO EGGS.', macros: '345 cal \u2022 14g P'},
+    {time: 'Lunch \u2022 12:30 PM', name: 'Chole Quinoa Bowl (Frozen)', desc: '150g frozen chole (Wed batch, defrosted) + 150g quinoa + onion + coriander + lemon + 100g curd', macros: '490 cal \u2022 25g P', flow: 'Uses Wed frozen chole'},
+    {time: 'Snack \u2022 3:30 PM', name: 'Classic Protein Shake', desc: '250ml milk + banana + 30g oats + PB + flax + honey + protein scoop 30g', macros: '610 cal \u2022 47g P'},
+    {time: 'Dinner \u2022 7:30 PM', name: 'Aloo Tamatar + Lauki + Dal + 2 Roti', desc: 'Quick aloo tamatar sabzi + lauki sabzi + Fri leftover dal + ghee on roti', macros: '665 cal \u2022 19g P', flow: 'Uses Fri dinner leftover dal'}
+  ],
+  Sun: [
+    {time: 'Pre-gym \u2022 6:00 AM', name: 'Tea with milk', desc: '100ml whole milk + chai/coffee', macros: '65 cal \u2022 3.5g P'},
+    {time: 'Breakfast \u2022 8:00 AM', name: 'Masala Omelette + Wild Rye Toast', desc: '3-egg masala omelette (onion, tomato, green chili, coriander) + 2 slices Wild Rye toast', macros: '430 cal \u2022 24g P'},
+    {time: 'Lunch \u2022 12:30 PM', name: 'Quinoa Khichdi + Curd', desc: 'Fresh: 60g quinoa + 30g moong dal + veggies + ghee. 150g curd on side.', macros: '335 cal \u2022 17g P'},
+    {time: 'Snack \u2022 3:30 PM', name: 'Papaya + Pumpkin Seeds', desc: '150g papaya + 30g pumpkin seeds + Brazil nut', macros: '248 cal \u2022 10.5g P'},
+    {time: 'Dinner \u2022 7:30 PM', name: 'Dal + 2 Roti + Curd (Light)', desc: 'Masoor dal (Fri leftover) 180g + 2 roti + ghee + 100g curd. PREP NIGHT after dinner.', macros: '540 cal \u2022 23g P', flow: 'After dinner: Soak rajma, boil eggs, cook quinoa for next week'}
+  ]
+};
+
+var GROCERY = {
+  'Costco': [
+    'Large whole wheat tortillas (20 ct) - for rolls, freeze half',
+    'Organic quinoa (2 lb bag)',
+    'Rolled oats - large canister (NOT quick oats)',
+    'Pumpkin seeds raw (1 lb bag)',
+    'Almonds raw (1 lb bag)',
+    'Avocados (6-pack)',
+    'Broccoli florets fresh (2 lbs)',
+    'Medjool dates (1 box)',
+    'Organic eggs cage-free (2 dozen)',
+    'Extra virgin olive oil'
+  ],
+  'Whole Foods': [
+    'Whole milk organic (2 half-gallons)',
+    'Bananas (6-7)',
+    'Guava (3-4)',
+    'Papaya (1 small)',
+    'Bell peppers mixed (4-5)',
+    'Baby spinach (1 bag)',
+    'Natural peanut butter (1 jar)',
+    'Brazil nuts (small bag)',
+    'Whey protein powder (1 tub)',
+    'Honey raw (1 small jar)'
+  ],
+  'Mayuri (Indian Grocery)': [
+    'Frozen whole wheat roti - no sugar (2 packs / 20 rotis)',
+    'Paneer fresh full-fat (800g-1kg)',
+    'Rajma Kashmiri (500g)',
+    'Kabuli chana / chole (750g)',
+    'Lobiya / black-eyed peas (500g)',
+    'Moong dal split washed (500g)',
+    'Masoor dal (500g)',
+    'Poha thin (500g)',
+    'Daliya / broken wheat (500g)',
+    'Amla fresh or frozen',
+    'Curry leaves fresh (1 bunch)',
+    'Peanuts raw (250g)',
+    'Ghee (500g jar)',
+    'Chole masala + kitchen king',
+    'Ground flaxseed (200g)',
+    'Cumin seeds + mustard seeds'
+  ],
+  'Wild Rye Bakery': [
+    'Organic whole wheat bread - no sugar (1 loaf)',
+    'Buy fresh Sun/Mon - keeps 4-5 days, freeze rest'
+  ],
+  'Safeway': [
+    'Onions (2 lbs)',
+    'Tomatoes (1 lb)',
+    'Potatoes (4-5 medium)',
+    'Lauki / bottle gourd (1)',
+    'Spinach fresh (2 bunches) - for palak paneer',
+    'Fresh coriander (1 bunch)',
+    'Lemons/limes (5-6)',
+    'Mango seasonal (2-3)'
+  ]
+};
+
+var NUTRIENTS = [
+  {name: 'Calcium', target: '1,200-1,500mg', pct: 95},
+  {name: 'Vitamin C', target: '150-200mg', pct: 100},
+  {name: 'Magnesium', target: '400-450mg', pct: 92},
+  {name: 'Zinc', target: '15-17mg', pct: 78},
+  {name: 'Iron', target: '17-19mg', pct: 96},
+  {name: 'Potassium', target: '3,500mg', pct: 85},
+  {name: 'Vitamin A', target: '900mcg RAE', pct: 80},
+  {name: 'Omega-3 (ALA)', target: '2.3g/day', pct: 90},
+  {name: 'Fiber', target: '30-40g', pct: 94},
+  {name: 'Water', target: '3L/day', pct: 75}
+];
+
+var SUPP_REQUIRED = [
+  {name: 'Vitamin D3', target: '2000 IU/day', pct: 0},
+  {name: 'Vitamin B12', target: '1000mcg/week', pct: 30},
+  {name: 'EPA/DHA (Fish Oil)', target: '1g combined', pct: 0},
+  {name: 'Vitamin K2 (MK-7)', target: '100mcg/day', pct: 0}
+];
+
+var SUPPLEMENTS = [
+  {name: 'Vitamin D3', dose: '2000 IU daily', reason: 'Cannot meet from food - essential for Ca absorption'},
+  {name: 'Vitamin B12', dose: '1000 mcg 2x/week', reason: 'Vegetarian diet insufficient - nerve + blood health'},
+  {name: 'Omega-3 (EPA/DHA)', dose: '1g combined daily', reason: 'Plant ALA conversion is only 5-10% - need direct source'},
+  {name: 'Vitamin K2 (MK-7)', dose: '100 mcg daily', reason: 'Directs calcium to bones, not arteries - fracture recovery'},
+  {name: 'Zinc Picolinate', dose: '10mg with dinner', reason: 'Persistent dietary shortfall (13mg vs 15-17mg target)'},
+  {name: 'Turmeric + Milk (nightly)', dose: '200ml warm milk + turmeric', reason: 'Anti-inflammatory + calcium + sleep aid'}
+];
+
+var PREP = {
+  sunday: {
+    title: 'Sunday Prep (45 min)',
+    time: '5:00 PM',
+    items: [
+      {icon: '🫘', text: 'Soak rajma in water + 1 tsp lemon juice (12-16 hrs for Tue night)'},
+      {icon: '🥚', text: 'Boil 6 eggs: cover with water, bring to boil, lid on 12 min, ice bath. Peel + store with damp paper towel.'},
+      {icon: '🍚', text: 'Cook quinoa batch: 2 cups dry in rice cooker (2:1 water). Cool and fridge (use Thu + Sat).'},
+      {icon: '🔪', text: 'Slice and freeze extra Wild Rye bread (keeps fresh for the week)'},
+      {icon: '🥬', text: 'Wash veggies: spinach, coriander, broccoli. Store in containers with paper towel.'},
+      {icon: '🎃', text: 'Portion 7 bags of pumpkin seeds (30g each) for the week'},
+      {icon: '🌰', text: 'Grind flaxseed for the week (70g whole, store in fridge dark container)'}
+    ]
+  },
+  wednesday: {
+    title: 'Wednesday Prep (10 min, during chole cooking)',
+    time: 'While pressure cooker runs',
+    items: [
+      {icon: '🫘', text: 'Soak chole should already be done (Monday night or quick-soak: boiling water + baking soda 2-3 hrs)'},
+      {icon: '🧊', text: 'After cooking chole: portion 2 servings into freezer bags, label "Sat lunch Jun 6"'},
+      {icon: '🥚', text: 'Check remaining eggs (should have 2-3 for Thu/Fri)'},
+      {icon: '🍚', text: 'Check quinoa supply (need ~300g for Thu + Sat bowls)'},
+      {icon: '🥬', text: 'Refresh veggies: check spinach, re-wrap coriander, discard wilted leaves'},
+      {icon: '🫘', text: 'Soak lobiya for Friday (6-8 hrs - can do Thu morning instead)'}
+    ]
+  }
+};
+
+// === RENDER FUNCTIONS ===
+var currentDay = 0;
+
+function renderDayChips() {
+  var container = document.getElementById('dayChips');
+  var html = '';
+  for (var i = 0; i < DAYS.length; i++) {
+    var d = DAYS[i];
+    var cls = 'day-chip';
+    if (i === currentDay) cls += ' active';
+    if (d.noEgg) cls += ' no-egg';
+    html += '<button class="' + cls + '" data-day="' + i + '">' + d.name + ' ' + d.date + '</button>';
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.day-chip').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      currentDay = parseInt(this.getAttribute('data-day'));
+      renderDayChips();
+      renderMeals();
+    });
+  });
+}
+
+function renderMeals() {
+  var dayName = DAYS[currentDay].name;
+  var meals = MEALS[dayName];
+  var container = document.getElementById('mealCards');
+  var html = '';
+  for (var i = 0; i < meals.length; i++) {
+    var m = meals[i];
+    html += '<div class="meal-card">';
+    html += '<div class="meal-time">' + m.time + '</div>';
+    html += '<div class="meal-name">' + m.name + '</div>';
+    html += '<div class="meal-desc">' + m.desc + '</div>';
+    html += '<div class="meal-macros"><span>' + m.macros + '</span></div>';
+    if (m.flow) {
+      html += '<div class="cooking-flow">\u27A1 ' + m.flow + '</div>';
+    }
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+function renderGrocery() {
+  var container = document.getElementById('groceryList');
+  var html = '';
+  var storeKeys = Object.keys(GROCERY);
+  for (var s = 0; s < storeKeys.length; s++) {
+    var store = storeKeys[s];
+    var items = GROCERY[store];
+    html += '<div class="grocery-section">';
+    html += '<h3>' + store + '</h3>';
+    for (var i = 0; i < items.length; i++) {
+      var id = 'g-' + s + '-' + i;
+      var checked = localStorage.getItem(id) === '1';
+      html += '<div class="grocery-item' + (checked ? ' checked' : '') + '">';
+      html += '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + '>';
+      html += '<label for="' + id + '">' + items[i] + '</label>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      localStorage.setItem(this.id, this.checked ? '1' : '0');
+      this.parentElement.classList.toggle('checked', this.checked);
+    });
+  });
+}
+
+function renderNutrients() {
+  var grid = document.getElementById('nutrientGrid');
+  var html = '';
+  for (var i = 0; i < NUTRIENTS.length; i++) {
+    var n = NUTRIENTS[i];
+    var color = n.pct >= 90 ? 'var(--accent2)' : n.pct >= 75 ? 'var(--warn)' : 'var(--danger)';
+    html += '<div class="nutrient-card">';
+    html += '<div class="n-name">' + n.name + '</div>';
+    html += '<div class="n-value" style="color:' + color + '">' + n.target + '</div>';
+    html += '<div class="n-bar"><div class="n-bar-fill" style="width:' + n.pct + '%;background:' + color + '"></div></div>';
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+
+  var grid2 = document.getElementById('suppReqGrid');
+  html = '';
+  for (var i = 0; i < SUPP_REQUIRED.length; i++) {
+    var n = SUPP_REQUIRED[i];
+    html += '<div class="nutrient-card">';
+    html += '<div class="n-name">' + n.name + ' (supplement needed)</div>';
+    html += '<div class="n-value" style="color:var(--danger)">' + n.target + '</div>';
+    html += '<div class="n-bar"><div class="n-bar-fill" style="width:' + n.pct + '%;background:var(--danger)"></div></div>';
+    html += '</div>';
+  }
+  grid2.innerHTML = html;
+}
+
+function renderSupplements() {
+  var container = document.getElementById('supplementsList');
+  var html = '';
+  for (var i = 0; i < SUPPLEMENTS.length; i++) {
+    var s = SUPPLEMENTS[i];
+    html += '<div class="supplement-card">';
+    html += '<div><div class="s-name">' + s.name + '</div><div class="s-reason">' + s.reason + '</div></div>';
+    html += '<div class="s-dose">' + s.dose + '</div>';
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+function renderPrep() {
+  var container = document.getElementById('prepContent');
+  var html = '';
+  var sections = ['sunday', 'wednesday'];
+  for (var s = 0; s < sections.length; s++) {
+    var sec = PREP[sections[s]];
+    html += '<div class="prep-section">';
+    html += '<h3>' + sec.title + '</h3>';
+    html += '<p style="font-size:0.75rem;color:var(--text2);margin-bottom:10px;">Start: ' + sec.time + '</p>';
+    for (var i = 0; i < sec.items.length; i++) {
+      var item = sec.items[i];
+      html += '<div class="prep-item"><span class="prep-icon">' + item.icon + '</span><span>' + item.text + '</span></div>';
+    }
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+// === TAB SWITCHING ===
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+    this.classList.add('active');
+    document.getElementById('tab-' + this.getAttribute('data-tab')).classList.add('active');
+  });
+});
+
+// === INIT ===
+renderDayChips();
+renderMeals();
+renderGrocery();
+renderNutrients();
+renderSupplements();
+renderPrep();
+
+// === PIN GATE ===
+(function() {
+  var PIN = '1823';
+  var overlay = document.getElementById('pinOverlay');
+  var app = document.getElementById('mainApp');
+  var inputs = document.querySelectorAll('#pinInput input');
+  var error = document.getElementById('pinError');
+
+  if (sessionStorage.getItem('pin-ok') === '1') {
+    overlay.style.display = 'none';
+    app.style.display = 'block';
+    return;
+  }
+
+  inputs[0].focus();
+
+  inputs.forEach(function(inp, idx) {
+    inp.addEventListener('input', function() {
+      if (this.value.length === 1 && idx < 3) {
+        inputs[idx + 1].focus();
+      }
+      var code = '';
+      inputs.forEach(function(i) { code += i.value; });
+      if (code.length === 4) {
+        if (code === PIN) {
+          sessionStorage.setItem('pin-ok', '1');
+          overlay.style.display = 'none';
+          app.style.display = 'block';
+        } else {
+          error.textContent = 'Incorrect PIN';
+          inputs.forEach(function(i) { i.value = ''; });
+          inputs[0].focus();
+        }
+      }
+    });
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && !this.value && idx > 0) {
+        inputs[idx - 1].focus();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
